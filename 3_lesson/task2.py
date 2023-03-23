@@ -13,11 +13,11 @@ try:
     T = float(a)
     t = T / 256 / 2
     while (True):
-        for i in range(255, 0, -1):
+        for i in range(255, -1, -1):
             a = i
             gpio.output(dac, trans(a, 8))
             sleep(t)
-        for i in range(255):
+        for i in range(256):
             a = i
             gpio.output(dac, trans(a, 8))
             sleep(t)

@@ -1,31 +1,21 @@
 import RPi.GPIO as gpio
 
 gpio.setmode(gpio.BCM)
-gpio.setup(24, gpio.OUT)
-
-gpio.setup([21, 20, 16, 12, 7, 8, 25], gpio.OUT, initial=1)
-
-p = gpio.PWM(24, 50)
-p.start(50)
-input("press ret ro stop")
+gpio.setup([2, 24], gpio.OUT, initial=0)
 
 try:
-    a = input("Введите период, число в секундах:")
-    T = float(a)
-    t = T / 256 / 2
-    while (True):
-        for i in range(255, 0, -1):
-            a = i
-            gpio.output(dac, trans(a, 8))
-            sleep(t)
-        for i in range(255):
-            a = i
-            gpio.output(dac, trans(a, 8))
-            sleep(t)
-except ValueError:
-    print("Too low period")
+    p = gpio.PWM(24, 50)
+    p2 = gpio.PWM(2, 50)
+    a = 100
+    p.start(a)
+    p2.start(a)
+    while True:
+        a = int(input("Введите коэффициент заполнения:"))
+        print("Плановое напряжение:", str(3.3 / 100 * a)[:5], "Вольт")
+        p.ChangeDutyCycle(a)
+        p2.ChangeDutyCycle(a)
 except KeyboardInterrupt:
     print("Stopped by user")
 finally:
-    gpio.output(dac, 0)
+    p.stop()
     gpio.cleanup()
