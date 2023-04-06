@@ -38,7 +38,7 @@ def adc():
             value += delta
         delta //= 2
     print("ADC value = {:^3} -> {}, input voltage = {:2f}".format(value, signal, voltage))
-    leds_c = 4
+    leds_c = min(round(value / 32), 8)
     list_t = list(map(int, list("0" * (8 - leds_c) + "1" * leds_c)))
     print(list_t)
     gpio.output(leds, list_t)
