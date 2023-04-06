@@ -9,7 +9,7 @@ troykaModule = 17
 comparator = 4
 
 gpio.setmode(gpio.BCM)
-gpio.setup(dac, gpio.OUT, inilial=gpio.LOW)
+gpio.setup(dac, gpio.OUT, initial=gpio.LOW)
 gpio.setup(troykaModule, gpio.OUT, initial=gpio.HIGH)
 gpio.setup(comparator, gpio.IN)
 
@@ -24,11 +24,12 @@ def num2dac(value):
 def adc():
     for value in range(256):
         signal = num2dac(value)
-        sleep(0.001)
+        sleep(0.005)
         voltage = value / levels * maxVoltage
         comparatorvalue = gpio.input(comparator)
-        if comparatorvalue == 1:
-            print("ADC value = {:^3} -> {}, input voltage = {:2f}".format(value, signal, voltage))
+        if comparatorvalue == 0:
+            break
+    print("ADC value = {:^3} -> {}, input voltage = {:2f}".format(value, signal, voltage))
 
 try:
     while (True):
