@@ -1,55 +1,111 @@
-import RPi.GPIO as gpio
-from time import sleep, clock
-from math import log2, ceil
+import RPi.GPIO as GPIO
+import time
+import matplotlib.pyplot as matplt
 
-dac = [26, 19, 13, 6, 5, 11, 9, 10]
-leds = [21, 20, 16, 12, 7, 8, 25, 24]
-bits = len(dac)
-levels = 2 ** bits
-maxVoltage = 3.3
-troykaModule = 17
-comparator = 4
+GPIO.setmode(GPIO.BCM)
 
-gpio.setmode(gpio.BCM)
-gpio.setup(dac, gpio.OUT, initial=gpio.LOW)
-gpio.setup(troykaModule, gpio.OUT, initial=gpio.HIGH)
-gpio.setup(comparator, gpio.IN)
-gpio.setup(leds, gpio.OUT)
+dac = (10,  9, 11,  5,  6, 13, 19, 26)
+comp = 4
+troyka = 17
+value = 0
+m_values = [0]
 
-def decimal2binary(decimal):
-    return [int (elem) for elem in bin(decimal)[2:].zfill(bits)]
+begin_charg = 0
+end_charg   = 0
+end_exp     = 0
 
-def num2dac(value):
-    signal = decimal2binary(value)
-    gpio.output(dac, signal)
-    return signal
+GPIO.setup(comp, GPIO.IN) 
+GPIO.setup(troyka, GPIO.OUT)
+GPIO.setup(dac, GPIO.OUT, initial = GPIO.LOW)
+
+def get_number():
+    while 1:
+        number = input(("enter number: "))
+        if number.isdecimal() == 0:
+            print("Not decimal number")
+            continue
+        if number == 'q':
+            break
+        if int(number) < 0:
+            print("Less then zero")
+            continue
+        elif int(number) > 255:
+            print("More then 255")
+            continue
+        try: 
+            x = int(number)
+            return x
+        except ValueError:
+            print("you entered not a number")
+
+
+def decimal_to_bin(x):
+    string = format(x, 'b')
+    tmp_list1 = [0, 0, 0, 0, 0, 0, 0, 0]
+    for i in range(len(string)):
+        tmp_list1[i] = int(string[len(string) - (i + 1)])
+    return tmp_list1 
+
 
 def adc():
-    value = 128
-    delta = 64
-    for i in range(bits - 1):
-        signal = num2dac(value)
-        sleep(0.01)
-        voltage = value / levels * maxVoltage
-        comparatorvalue = gpio.input(comparator)
-        if comparatorvalue == 0:
-            value -= delta
-        else:
-            value += delta
-        delta //= 2
-    print("ADC value = {:^3} -> {}, input voltage = {:2f}".format(value, signal, voltage))
-    leds_c = min(round(value / 32), 8)
-    list_t = list(map(int, list("0" * (8 - leds_c) + "1" * leds_c)))
-    print(list_t)
-    gpio.output(leds, list_t)
+    sum = 0
+    value = 0
+    for k in range(7, -1, -1):
+        value = 2 ** k
+        sum += value
+        list1 = decimal_to_bin(sum)
+        GPIO.output(dac, list1)
+        time.sleep(0.001)
+        compVal = GPIO.input(comp)
+        if compVal == 0:
+            sum -= value
+    print("ADC value = {:^3}, voltage = {:.2f}".format(sum, (sum / 255) * 3.3))
+    return sum
 
 try:
-    while (True):
-        adc()
-except KeyboardInterrupt:
-    print("Stopped by user")
-else:
-    print("NOEXCEPTIONS")
+    value = adc()
+    begin_charg = exptime = time.time()
+
+    while value < 255:
+        value = adc()
+        GPIO.output(troyka, 1)
+        #time.sleep(0.001)
+        #exptime += 0.001
+        m_values.append(value)
+
+    end_charg = exptime
+    
+    while value > 10:
+        value = adc()
+        GPIO.output(troyka, 0)
+        #time.sleep(0.001)
+        #exptime += 0.001
+        m_values.append(value)
+
+    end_exp = time.time() - begin_charg
+    
+    m_values.append(end_exp)
+
+    m_values_str = [str(item) for item in m_values]
+
+    with open("data.txt", "w") as out:
+        
+        out.write("\n".join(m_values_str))
+    matplt.plot(m_values)
+    matplt.show()
+
+    freq = len(m_values) / end_exp
+
+    settings = [3.3/256, freq, end_exp]
+
+    settings_str = [str(item) for item in settings]
+
+    with open("settings.txt", "w") as out:
+        
+        out.write("\n".join(settings_str))
+
+
 finally:
-    gpio.output(dac, gpio.LOW)
-    gpio.cleanup()
+    GPIO.output(dac, 0)
+    GPIO.output(troyka, 1)
+    GPIO.cleanup()
